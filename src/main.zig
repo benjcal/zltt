@@ -9,6 +9,5 @@ pub fn main() !void {
     lua.init("lua/config.lua");
 
     const config1 = config.getFromLuaState(lua.L);
-
     try sdl.init();
 }

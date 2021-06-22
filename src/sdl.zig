@@ -1,14 +1,11 @@
 const std = @import("std");
-const print = std.debug.print;
 
-const allocator = std.heap.c_allocator;
-
-const strings = @import("strings.zig");
-const lua = @import("lua.zig");
 const c = @import("c.zig");
+const lua = @import("lua.zig");
 
-var R: *c.SDL_Renderer = undefined;
-var F: *c.TTF_Font = undefined;
+pub var R: *c.SDL_Renderer = undefined;
+pub var F: *c.TTF_Font = undefined;
+pub var W: *c.SDL_Window = undefined;
 
 pub fn init() !void {
     // init SDL
@@ -18,23 +15,43 @@ pub fn init() !void {
     try initTTF();
 
     // make window
+    const initWindowHeight: u32 = 800;
+    const initWindowWidth: u32 = 600;
+
     const wFlags = c.SDL_WINDOW_RESIZABLE | c.SDL_WINDOW_SHOWN;
-    const window = c.SDL_CreateWindow("Bolt", c.SDL_WINDOWPOS_CENTERED, c.SDL_WINDOWPOS_CENTERED, 800, 600, wFlags);
+
+    W = c.SDL_CreateWindow(
+        "Bolt",
+        c.SDL_WINDOWPOS_CENTERED,
+        c.SDL_WINDOWPOS_CENTERED,
+        initWindowHeight,
+        initWindowWidth,
+        wFlags,
+    ).?;
 
     // init renderer
-    R = c.SDL_CreateRenderer(window, -1, c.SDL_RENDERER_ACCELERATED).?;
+    R = c.SDL_CreateRenderer(
+        W,
+        -1,
+        c.SDL_RENDERER_ACCELERATED,
+    ).?;
 
     // initial layout drawing
-    drawLayout();
+    drawLayout(800, 600);
     _ = c.SDL_RenderPresent(R);
 
-    initLuaFunctions();
+    try renderTextMain("Hello World!\nthis is a new line\n\nadfaskdfhd");
+    try renderTextSub("Hello World!");
+
+    _ = c.SDL_StartTextInput();
 
     // start loop for events
     startEventLoop();
 }
 
 fn startEventLoop() void {
+    _ = c.SDL_StartTextInput();
+
     while (true) {
         var ev: c.SDL_Event = undefined;
         _ = c.SDL_WaitEvent(&ev);
@@ -42,11 +59,11 @@ fn startEventLoop() void {
         switch (ev.type) {
             c.SDL_QUIT => break,
 
-            c.SDL_KEYDOWN => {
-                if (ev.key.keysym.sym == 27) {
+            c.SDL_TEXTINPUT => {
+                if (ev.text.text[0] == 27) {
                     break;
                 }
-                callLuaEventHandler(ev.key.keysym.sym);
+                // callLuaEventHandler(ev.text.text[0]);
             },
 
             else => continue,
@@ -54,13 +71,13 @@ fn startEventLoop() void {
     }
 }
 
-fn drawLayout() void {
+fn drawLayout(w: c_int, h: c_int) void {
     // draw bg
     const bgRect = c.SDL_Rect{
         .x = 0,
         .y = 0,
-        .w = 800,
-        .h = 600,
+        .w = w,
+        .h = h,
     };
     _ = c.SDL_SetRenderDrawColor(R, 40, 44, 52, 255);
     _ = c.SDL_RenderFillRect(R, &bgRect);
@@ -72,17 +89,13 @@ fn drawLayout() void {
     // draw mode line
     const modeRect = c.SDL_Rect{
         .x = 0,
-        .y = 600 - (fontHeight * 2),
-        .w = 800,
-        .h = 19,
+        .y = h - fontHeight,
+        .w = w,
+        .h = fontHeight,
     };
+
     _ = c.SDL_SetRenderDrawColor(R, 44, 50, 61, 255);
     _ = c.SDL_RenderFillRect(R, &modeRect);
-}
-
-fn initLuaFunctions() void {
-    c.lua_pushcfunction(lua.L, luaCalPutText);
-    c.lua_setglobal(lua.L, "puttext");
 }
 
 fn initTTF() !void {
@@ -90,7 +103,7 @@ fn initTTF() !void {
     const fc = c.FcInitLoadConfigAndFonts();
 
     // select font to use
-    const pat = c.FcNameParse("Hack:style=Bold");
+    const pat = c.FcNameParse("Hack");
     c.FcDefaultSubstitute(pat);
 
     var result: c.FcResult = undefined;
@@ -106,59 +119,84 @@ fn initTTF() !void {
     F = c.TTF_OpenFont(file, 16).?;
 }
 
-fn putText(text: []const u8) void {
-    // clear renderer
+pub fn clearScreen() void {
     _ = c.SDL_RenderClear(R);
     drawLayout();
+}
 
-    const textColor = c.SDL_Color{
+fn renderTextMain(text: []const u8) !void {
+    var fgColor = c.SDL_Color{
         .r = 170,
         .g = 178,
         .b = 191,
         .a = 255,
     };
 
-    var textHeight: c_int = undefined;
-    var textWidth: c_int = undefined;
+    var lines = std.mem.split(text, "\n");
+    var lineCount: c_int = 0;
 
-    // split in lines
-    var lines = std.mem.split(text, "|");
-
-    var i: c_int = 0;
     while (true) {
-        const line = lines.next();
-        if (line != null) {
-            const l = line.?;
-            const textSurface = c.TTF_RenderText_Blended(F, l.ptr, textColor);
-            const textTexture = c.SDL_CreateTextureFromSurface(R, textSurface);
+        if (lines.next()) |line| {
+            const len = line.len;
 
-            _ = c.TTF_SizeText(F, l.ptr, &textWidth, &textHeight);
-            const rect = c.SDL_Rect{ .x = 0, .y = textHeight * i, .h = textHeight, .w = textWidth };
+            // allocate space for new line + null terminator
+            const newLine = try std.heap.c_allocator.alloc(u8, len + 1);
+
+            // copy line on memory
+            std.mem.copy(u8, newLine, line);
+
+            // null terminate newLine
+            newLine[len] = 0;
+
+            const textSurface = c.TTF_RenderText_Blended(F, newLine.ptr, fgColor);
+
+            const textTexture = c.SDL_CreateTextureFromSurface(R, textSurface);
+            _ = c.SDL_FreeSurface(textSurface);
+
+            var textHeight: c_int = undefined;
+            var textWidth: c_int = undefined;
+            _ = c.TTF_SizeText(F, newLine.ptr, &textWidth, &textHeight);
+
+            const rect = c.SDL_Rect{ .x = 0, .y = textHeight * lineCount, .h = textHeight, .w = textWidth };
+
             _ = c.SDL_RenderCopy(R, textTexture, null, &rect);
+            _ = c.SDL_DestroyTexture(textTexture);
+            lineCount += 1;
         } else {
             break;
         }
-        i = i + 1;
     }
 
     _ = c.SDL_RenderPresent(R);
 }
 
-fn callLuaEventHandler(key: i32) void {
-    _ = c.lua_getglobal(lua.L, "event");
-    _ = c.lua_pushinteger(lua.L, key);
+fn renderTextSub(text: []const u8) !void {
+    var w: c_int = undefined;
+    var h: c_int = undefined;
 
-    _ = c.lua_pcallk(lua.L, 1, 0, 0, 0, null);
-}
+    c.SDL_GetWindowSize(W, null, &h);
 
-fn luaCalPutText(L: ?*c.lua_State) callconv(.C) c_int {
-    const text = c.lua_tolstring(L, 1, null);
+    var fgColor = c.SDL_Color{
+        .r = 170,
+        .g = 178,
+        .b = 191,
+        .a = 255,
+    };
 
-    putText(std.mem.sliceTo(text, 0));
+    const textSurface = c.TTF_RenderText_Blended(F, text.ptr, fgColor);
 
-    return 0;
-}
+    const textTexture = c.SDL_CreateTextureFromSurface(R, textSurface);
+    _ = c.SDL_FreeSurface(textSurface);
 
-test "sample test" {
-    try std.testing.expect(2 == 2);
+    var textHeight: c_int = undefined;
+    var textWidth: c_int = undefined;
+
+    _ = c.TTF_SizeText(F, text.ptr, &textWidth, &textHeight);
+
+    const rect = c.SDL_Rect{ .x = 0, .y = h - textHeight, .h = textHeight, .w = textWidth };
+
+    _ = c.SDL_RenderCopy(R, textTexture, null, &rect);
+    _ = c.SDL_DestroyTexture(textTexture);
+
+    _ = c.SDL_RenderPresent(R);
 }

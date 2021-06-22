@@ -16,11 +16,14 @@ pub fn build(b: *std.build.Builder) void {
         "SDL2",
         "SDL2_ttf",
         "fontconfig",
-        "lua",
+        "luajit-5.1",
     };
 
-    const tests = b.addTest("src/sdl.zig");
+    const tests = b.addTest("src/tests.zig");
     tests.setBuildMode(mode);
+    for (libs) |lib| {
+        tests.linkSystemLibrary(lib);
+    }
 
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&tests.step);

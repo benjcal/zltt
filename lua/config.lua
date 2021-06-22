@@ -1,9 +1,10 @@
-print("lol")
 
 font_face = "stuff"
 font_size = 16
 
 buffer = ""
+
+puttext('hello there!! <BFFFFFF> asdfkjhdf')
 
 function event(key)
 	print(key)
