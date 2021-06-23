@@ -4,15 +4,25 @@ This is a simple toy project to create a simple TUI (Text User Interface). Think
 
 Programs for `zltt` are written in Lua and `zltt` uses Zig and SDL to render a GUI.
 
-The Lua API is extremly simple but very versatile. Look at `examples/` for example functionality.
+The Lua API is extremly simple but very versatile. Look at `lua/examples/` for example functionality.
+
+### Requirements
+
+Zig
+SDL2
+LuaJIT
+
+### Instructions 
+
+To build run `zig build`
+
+To run an example do `./zig-out/bin/zltt lua/examples/todo/init.lua`
 
 ## Examples
 
 https://user-images.githubusercontent.com/2781653/123039629-58ef2980-d3a7-11eb-92ca-4f71f105ebd9.mp4
 
-
 https://user-images.githubusercontent.com/2781653/123039640-5db3dd80-d3a7-11eb-9e17-2bfebf9ae951.mp4
-
 
 
 ### API
