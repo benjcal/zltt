@@ -1,6 +1,6 @@
 ## ZLTT 
 
-This is a simple toy project to create a simple TUI (Text User Interface). Think of emacs TUI but you don't need 10 years to learn it! 😅
+ZLTT (Zig Lua TUI Tool) is a simple toy project to create a simple TUI (Text User Interface). Think of emacs TUI but you don't need 10 years to learn it! 😅
 
 Programs for `zltt` are written in Lua and `zltt` uses Zig and SDL to render a GUI.
 
