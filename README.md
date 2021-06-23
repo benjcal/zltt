@@ -1,8 +1,8 @@
 ## ZLTT 
 
-This is a simple toy project to create a simple TUI (Text User Interface) for a smart kitchen.
+This is a simple toy project to create a simple TUI (Text User Interface). Think of emacs TUI but you don't need 10 years to learn it! 😅
 
-SDL is used to render the GUI, Zig is used as glue language to interface with the C APIs, and Lua to operate the the app.
+Programs for `zltt` are written in Lua and `zltt` uses Zig and SDL to render a GUI.
 
 The Lua API is extremly simple but very versatile. Look at `examples/` for example functionality.
 
