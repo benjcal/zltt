@@ -3,9 +3,30 @@ const std = @import("std");
 const c = @import("c.zig");
 const lua = @import("lua.zig");
 
+var T: *c.SDL_Texture = undefined;
 var R: *c.SDL_Renderer = undefined;
 var F: *c.TTF_Font = undefined;
 var W: *c.SDL_Window = undefined;
+
+// Main BG Color
+var MBGR: u8 = 0;
+var MBGG: u8 = 0;
+var MBGB: u8 = 0;
+
+// Sub BG Color
+var SBGR: u8 = 0;
+var SBGG: u8 = 0;
+var SBGB: u8 = 0;
+
+// Main Text Color
+var MTCR: u8 = 255;
+var MTCG: u8 = 255;
+var MTCB: u8 = 255;
+
+// Sub Text Color
+var STCR: u8 = 255;
+var STCG: u8 = 255;
+var STCB: u8 = 255;
 
 var MainTextBuffer: []u8 = undefined;
 var SubTextBuffer: []u8 = undefined;
@@ -19,6 +40,34 @@ pub fn putMainText(text: []const u8) void {
 pub fn putSubText(text: []const u8) void {
     std.mem.copy(u8, SubTextBuffer, text);
     SubTextBuffer[text.len] = 0;
+    redraw() catch |err| return;
+}
+
+pub fn setMainBGColor(r: u8, g: u8, b: u8) void {
+    MBGR = r;
+    MBGG = g;
+    MBGB = b;
+    redraw() catch |err| return;
+}
+
+pub fn setSubBGColor(r: u8, g: u8, b: u8) void {
+    SBGR = r;
+    SBGG = g;
+    SBGB = b;
+    redraw() catch |err| return;
+}
+
+pub fn setMainTextColor(r: u8, g: u8, b: u8) void {
+    MTCR = r;
+    MTCG = g;
+    MTCB = b;
+    redraw() catch |err| return;
+}
+
+pub fn setSubTextColor(r: u8, g: u8, b: u8) void {
+    STCR = r;
+    STCG = g;
+    STCB = b;
     redraw() catch |err| return;
 }
 
@@ -60,6 +109,8 @@ pub fn init() !void {
         c.SDL_RENDERER_ACCELERATED,
     ).?;
 
+    // create main texture
+
     // initial layout drawing
     try redraw();
 
@@ -69,9 +120,35 @@ pub fn init() !void {
 fn redraw() !void {
     _ = c.SDL_RenderClear(R);
 
-    // set bg color
-    _ = c.SDL_SetRenderDrawColor(R, 40, 44, 52, 255);
-    _ = c.SDL_RenderFillRect(R, null);
+    var w: c_int = undefined;
+    var h: c_int = undefined;
+
+    c.SDL_GetWindowSize(W, &w, &h);
+
+    const fh = c.TTF_FontHeight(F);
+
+    const s = c.SDL_CreateRGBSurface(0, w, h, 32, 0, 0, 0, 0);
+
+    const mainRect = c.SDL_Rect{
+        .x = 0,
+        .y = 0,
+        .w = w,
+        .h = h - fh,
+    };
+
+    const subRect = c.SDL_Rect{
+        .x = 0,
+        .y = h - fh,
+        .w = w,
+        .h = fh,
+    };
+
+    _ = c.SDL_FillRect(s, &mainRect, c.SDL_MapRGBA(s.*.format, MBGR, MBGG, MBGB, 255));
+    _ = c.SDL_FillRect(s, &subRect, c.SDL_MapRGBA(s.*.format, SBGR, SBGG, SBGB, 255));
+
+    const t = c.SDL_CreateTextureFromSurface(R, s);
+
+    _ = c.SDL_RenderCopy(R, t, null, null);
 
     try renderTextMain(MainTextBuffer);
     try renderTextSub(SubTextBuffer);
@@ -79,13 +156,19 @@ fn redraw() !void {
 }
 
 pub fn startEventLoop() void {
-    _ = c.SDL_StartTextInput();
+    // _ = c.SDL_StartTextInput();
 
     while (true) {
         var ev: c.SDL_Event = undefined;
         _ = c.SDL_WaitEvent(&ev);
 
         switch (ev.type) {
+            c.SDL_WINDOWEVENT => {
+                if (ev.window.event == c.SDL_WINDOWEVENT_RESIZED) {
+                    redraw() catch |_| continue;
+                }
+            },
+
             c.SDL_QUIT => break,
 
             c.SDL_KEYDOWN => {
@@ -128,9 +211,9 @@ fn initTTF() !void {
 
 fn renderTextMain(text: []const u8) !void {
     var fgColor = c.SDL_Color{
-        .r = 170,
-        .g = 178,
-        .b = 191,
+        .r = MTCR,
+        .g = MTCG,
+        .b = MTCB,
         .a = 255,
     };
 
@@ -171,7 +254,6 @@ fn renderTextMain(text: []const u8) !void {
 }
 
 fn renderTextSub(text: []const u8) !void {
-    var w: c_int = undefined;
     var h: c_int = undefined;
 
     c.SDL_GetWindowSize(W, null, &h);
@@ -182,9 +264,9 @@ fn renderTextSub(text: []const u8) !void {
     _ = c.TTF_SizeText(F, text.ptr, &textWidth, &textHeight);
 
     var fgColor = c.SDL_Color{
-        .r = 170,
-        .g = 178,
-        .b = 191,
+        .r = STCR,
+        .g = STCG,
+        .b = STCB,
         .a = 255,
     };
 

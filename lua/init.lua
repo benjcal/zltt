@@ -1,3 +1,8 @@
+setMainBGColor(40, 44, 52)
+setSubBGColor(44, 50, 61)
+setMainTextColor(170, 178, 191)
+setSubTextColor(170, 178, 191)
+
 local mainTextBuffer = [[
 Hello There from lua/init.lua
 

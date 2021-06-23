@@ -27,6 +27,18 @@ fn initLuaFunctions() void {
 
     c.lua_pushcfunction(L, lPutSubText);
     c.lua_setglobal(L, "putSubText");
+
+    c.lua_pushcfunction(L, lSetMainBGColor);
+    c.lua_setglobal(L, "setMainBGColor");
+
+    c.lua_pushcfunction(L, lSetSubBGColor);
+    c.lua_setglobal(L, "setSubBGColor");
+
+    c.lua_pushcfunction(L, lSetMainTextColor);
+    c.lua_setglobal(L, "setMainTextColor");
+
+    c.lua_pushcfunction(L, lSetSubTextColor);
+    c.lua_setglobal(L, "setSubTextColor");
 }
 
 pub fn handleInputEvent(key: i32) void {
@@ -50,6 +62,46 @@ pub fn lPutSubText(ls: ?*c.lua_State) callconv(.C) c_int {
     const _text = c.lua_tolstring(ls, 1, null);
 
     sdl.putSubText(std.mem.sliceTo(_text, 0));
+
+    return 0;
+}
+
+pub fn lSetMainBGColor(ls: ?*c.lua_State) callconv(.C) c_int {
+    const r = c.lua_tointeger(ls, 1);
+    const g = c.lua_tointeger(ls, 2);
+    const b = c.lua_tointeger(ls, 3);
+
+    sdl.setMainBGColor(@intCast(u8, r), @intCast(u8, g), @intCast(u8, b));
+
+    return 0;
+}
+
+pub fn lSetSubBGColor(ls: ?*c.lua_State) callconv(.C) c_int {
+    const r = c.lua_tointeger(ls, 1);
+    const g = c.lua_tointeger(ls, 2);
+    const b = c.lua_tointeger(ls, 3);
+
+    sdl.setSubBGColor(@intCast(u8, r), @intCast(u8, g), @intCast(u8, b));
+
+    return 0;
+}
+
+pub fn lSetMainTextColor(ls: ?*c.lua_State) callconv(.C) c_int {
+    const r = c.lua_tointeger(ls, 1);
+    const g = c.lua_tointeger(ls, 2);
+    const b = c.lua_tointeger(ls, 3);
+
+    sdl.setMainTextColor(@intCast(u8, r), @intCast(u8, g), @intCast(u8, b));
+
+    return 0;
+}
+
+pub fn lSetSubTextColor(ls: ?*c.lua_State) callconv(.C) c_int {
+    const r = c.lua_tointeger(ls, 1);
+    const g = c.lua_tointeger(ls, 2);
+    const b = c.lua_tointeger(ls, 3);
+
+    sdl.setSubTextColor(@intCast(u8, r), @intCast(u8, g), @intCast(u8, b));
 
     return 0;
 }
