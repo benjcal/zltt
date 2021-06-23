@@ -3,13 +3,37 @@ const std = @import("std");
 const c = @import("c.zig");
 const lua = @import("lua.zig");
 
-pub var R: *c.SDL_Renderer = undefined;
-pub var F: *c.TTF_Font = undefined;
-pub var W: *c.SDL_Window = undefined;
+var R: *c.SDL_Renderer = undefined;
+var F: *c.TTF_Font = undefined;
+var W: *c.SDL_Window = undefined;
+
+var MainTextBuffer: []u8 = undefined;
+var SubTextBuffer: []u8 = undefined;
+
+pub fn putMainText(text: []const u8) void {
+    std.mem.copy(u8, MainTextBuffer, text);
+    MainTextBuffer[text.len] = 0;
+    redraw() catch |err| return;
+}
+
+pub fn putSubText(text: []const u8) void {
+    std.mem.copy(u8, SubTextBuffer, text);
+    SubTextBuffer[text.len] = 0;
+    redraw() catch |err| return;
+}
 
 pub fn init() !void {
+    // initialize memory
+    MainTextBuffer = try std.heap.c_allocator.alloc(u8, 10_000);
+    SubTextBuffer = try std.heap.c_allocator.alloc(u8, 1_000);
+
+    std.mem.copy(u8, MainTextBuffer, "\x00");
+    std.mem.copy(u8, SubTextBuffer, "\x00");
+
     // init SDL
-    _ = c.SDL_Init(c.SDL_INIT_VIDEO);
+    if (c.SDL_Init(c.SDL_INIT_VIDEO) < 0) {
+        std.log.crit("error on initializing SDL {s}\n", .{c.SDL_GetError()});
+    }
 
     // init fonts
     try initTTF();
@@ -37,19 +61,24 @@ pub fn init() !void {
     ).?;
 
     // initial layout drawing
-    drawLayout(800, 600);
-    _ = c.SDL_RenderPresent(R);
-
-    try renderTextMain("Hello World!\nthis is a new line\n\nadfaskdfhd");
-    try renderTextSub("Hello World!");
+    try redraw();
 
     _ = c.SDL_StartTextInput();
-
-    // start loop for events
-    startEventLoop();
 }
 
-fn startEventLoop() void {
+fn redraw() !void {
+    _ = c.SDL_RenderClear(R);
+
+    // set bg color
+    _ = c.SDL_SetRenderDrawColor(R, 40, 44, 52, 255);
+    _ = c.SDL_RenderFillRect(R, null);
+
+    try renderTextMain(MainTextBuffer);
+    try renderTextSub(SubTextBuffer);
+    _ = c.SDL_RenderPresent(R);
+}
+
+pub fn startEventLoop() void {
     _ = c.SDL_StartTextInput();
 
     while (true) {
@@ -59,43 +88,23 @@ fn startEventLoop() void {
         switch (ev.type) {
             c.SDL_QUIT => break,
 
+            c.SDL_KEYDOWN => {
+                switch (ev.key.keysym.sym) {
+                    13, 27, 8 => lua.handleInputEvent(ev.key.keysym.sym),
+                    else => continue,
+                }
+            },
+
             c.SDL_TEXTINPUT => {
                 if (ev.text.text[0] == 27) {
                     break;
                 }
-                // callLuaEventHandler(ev.text.text[0]);
+                lua.handleInputEvent(ev.text.text[0]);
             },
 
             else => continue,
         }
     }
-}
-
-fn drawLayout(w: c_int, h: c_int) void {
-    // draw bg
-    const bgRect = c.SDL_Rect{
-        .x = 0,
-        .y = 0,
-        .w = w,
-        .h = h,
-    };
-    _ = c.SDL_SetRenderDrawColor(R, 40, 44, 52, 255);
-    _ = c.SDL_RenderFillRect(R, &bgRect);
-
-    // get font height
-    var fontHeight: c_int = undefined;
-    _ = c.TTF_SizeText(F, "", null, &fontHeight);
-
-    // draw mode line
-    const modeRect = c.SDL_Rect{
-        .x = 0,
-        .y = h - fontHeight,
-        .w = w,
-        .h = fontHeight,
-    };
-
-    _ = c.SDL_SetRenderDrawColor(R, 44, 50, 61, 255);
-    _ = c.SDL_RenderFillRect(R, &modeRect);
 }
 
 fn initTTF() !void {
@@ -107,21 +116,14 @@ fn initTTF() !void {
     c.FcDefaultSubstitute(pat);
 
     var result: c.FcResult = undefined;
-
     const font = c.FcFontMatch(fc, pat, &result);
 
     var file: ?[*:0]u8 = undefined;
-
     _ = c.FcPatternGetString(font, c.FC_FILE, 0, &file);
 
     _ = c.TTF_Init();
 
     F = c.TTF_OpenFont(file, 16).?;
-}
-
-pub fn clearScreen() void {
-    _ = c.SDL_RenderClear(R);
-    drawLayout();
 }
 
 fn renderTextMain(text: []const u8) !void {
@@ -166,8 +168,6 @@ fn renderTextMain(text: []const u8) !void {
             break;
         }
     }
-
-    _ = c.SDL_RenderPresent(R);
 }
 
 fn renderTextSub(text: []const u8) !void {
@@ -175,6 +175,11 @@ fn renderTextSub(text: []const u8) !void {
     var h: c_int = undefined;
 
     c.SDL_GetWindowSize(W, null, &h);
+
+    var textHeight: c_int = undefined;
+    var textWidth: c_int = undefined;
+
+    _ = c.TTF_SizeText(F, text.ptr, &textWidth, &textHeight);
 
     var fgColor = c.SDL_Color{
         .r = 170,
@@ -188,15 +193,8 @@ fn renderTextSub(text: []const u8) !void {
     const textTexture = c.SDL_CreateTextureFromSurface(R, textSurface);
     _ = c.SDL_FreeSurface(textSurface);
 
-    var textHeight: c_int = undefined;
-    var textWidth: c_int = undefined;
-
-    _ = c.TTF_SizeText(F, text.ptr, &textWidth, &textHeight);
-
     const rect = c.SDL_Rect{ .x = 0, .y = h - textHeight, .h = textHeight, .w = textWidth };
 
     _ = c.SDL_RenderCopy(R, textTexture, null, &rect);
     _ = c.SDL_DestroyTexture(textTexture);
-
-    _ = c.SDL_RenderPresent(R);
 }

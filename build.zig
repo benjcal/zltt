@@ -41,6 +41,7 @@ pub fn build(b: *std.build.Builder) void {
     if (b.args) |args| {
         run_cmd.addArgs(args);
     }
+    run_cmd.addArg("lua/init.lua");
 
     const run_step = b.step("run", "Run the app");
     run_step.dependOn(&run_cmd.step);

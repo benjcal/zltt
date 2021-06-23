@@ -1,32 +1,55 @@
+const std = @import("std");
+
 const c = @import("c.zig");
+const sdl = @import("sdl.zig");
 
 pub var L: *c.lua_State = undefined;
 
-pub fn init(configFile: []const u8) void {
+pub fn init(file: []const u8) void {
     L = c.luaL_newstate().?;
 
     c.luaL_openlibs(L);
 
-    _ = c.luaL_loadfilex(L, configFile.ptr, null);
-    _ = c.lua_pcall(L, 0, 0, 0);
+    initLuaFunctions();
+    if (c.luaL_loadfile(L, file.ptr) != c.LUA_OK) {
+        std.log.crit("error loading lua file: {s}\n", .{c.lua_tolstring(L, -1, null)});
+        return;
+    }
+
+    if (c.lua_pcall(L, 0, 0, 0) != c.LUA_OK) {
+        std.log.crit("error runing lua file: {s}\n", .{c.lua_tolstring(L, -1, null)});
+    }
 }
 
 fn initLuaFunctions() void {
-    c.lua_pushcfunction(lua.L, luaCalPutText);
-    c.lua_setglobal(lua.L, "puttext");
+    c.lua_pushcfunction(L, lPutMainText);
+    c.lua_setglobal(L, "putMainText");
+
+    c.lua_pushcfunction(L, lPutSubText);
+    c.lua_setglobal(L, "putSubText");
 }
 
-fn callLuaEventHandler(key: i32) void {
-    _ = c.lua_getglobal(lua.L, "event");
-    _ = c.lua_pushinteger(lua.L, key);
+pub fn handleInputEvent(key: i32) void {
+    c.lua_getglobal(L, "handleInputEvent");
+    _ = c.lua_pushinteger(L, key);
 
-    _ = c.lua_pcall(lua.L, 1, 0, 0);
+    if (c.lua_pcall(L, 1, 0, 0) != c.LUA_OK) {
+        std.log.crit("error runing lua function: {s}\n", .{c.lua_tolstring(L, -1, null)});
+    }
 }
 
-fn luaCalPutText(L: ?*c.lua_State) callconv(.C) c_int {
-    const _text = c.lua_tolstring(L, 1, null);
+pub fn lPutMainText(ls: ?*c.lua_State) callconv(.C) c_int {
+    const _text = c.lua_tolstring(ls, 1, null);
 
-    text.render(std.mem.sliceTo(_text, 0)) catch |err| return 0;
+    sdl.putMainText(std.mem.sliceTo(_text, 0));
+
+    return 0;
+}
+
+pub fn lPutSubText(ls: ?*c.lua_State) callconv(.C) c_int {
+    const _text = c.lua_tolstring(ls, 1, null);
+
+    sdl.putSubText(std.mem.sliceTo(_text, 0));
 
     return 0;
 }
