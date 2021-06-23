@@ -45,7 +45,7 @@ pub fn init() !void {
     const wFlags = c.SDL_WINDOW_RESIZABLE | c.SDL_WINDOW_SHOWN;
 
     W = c.SDL_CreateWindow(
-        "Bolt",
+        "zltt",
         c.SDL_WINDOWPOS_CENTERED,
         c.SDL_WINDOWPOS_CENTERED,
         initWindowHeight,
