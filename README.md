@@ -11,6 +11,7 @@ The Lua API is extremly simple but very versatile. Look at `lua/examples/` for e
 Zig
 SDL2
 LuaJIT
+fontconfig
 
 ### Instructions 
 
@@ -18,7 +19,7 @@ To build run `zig build`
 
 To run an example do `./zig-out/bin/zltt lua/examples/todo/init.lua`
 
-## Examples
+### Examples
 
 https://user-images.githubusercontent.com/2781653/123039629-58ef2980-d3a7-11eb-92ca-4f71f105ebd9.mp4
 
@@ -42,3 +43,12 @@ This function prints `text` to the bottom line of the screen
 This function is called when on a KEYDOWN event. The value of `key` is the ascii integer of the charater.
 To recover the character in lua use `string.char(key)`
 
+### TODO
+- [x] Create GUI with SDL
+- [x] Support multiline rendering on main area
+- [x] Use fontconfig to load font
+- [x] Export print functions to Lua
+- [x] Load Lua file
+- [ ] Support window resizing
+- [ ] Add function to change font
+- [ ] Add function to change colors
