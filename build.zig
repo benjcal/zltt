@@ -28,7 +28,7 @@ pub fn build(b: *std.build.Builder) void {
     const test_step = b.step("test", "Run tests");
     test_step.dependOn(&tests.step);
 
-    const exe = b.addExecutable("zig-sdl", "src/main.zig");
+    const exe = b.addExecutable("zltt", "src/main.zig");
     exe.setTarget(target);
     exe.setBuildMode(mode);
     for (libs) |lib| {
