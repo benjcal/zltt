@@ -14,15 +14,33 @@ pub fn build(b: *std.build.Builder) void {
     const libs = [_][]const u8{
         "c",
         "SDL2",
-        "SDL2_ttf",
-        "fontconfig",
+        "cairo",
+        "pangocairo-1.0",
         "luajit-5.1",
+    };
+
+    const includes = [_][]const u8{
+        "libs",
+        "/usr/include/pango-1.0",
+        "/usr/include/luajit-2.1",
+    };
+
+    const c_files = [_][]const u8{
+        "libs/cairosdl/cairosdl.c",
     };
 
     const tests = b.addTest("src/tests.zig");
     tests.setBuildMode(mode);
     for (libs) |lib| {
         tests.linkSystemLibrary(lib);
+    }
+
+    for (includes) |include| {
+        tests.addIncludeDir(include);
+    }
+
+    for (c_files) |file| {
+        tests.addCSourceFile(file, &[_][]const u8{});
     }
 
     const test_step = b.step("test", "Run tests");
@@ -34,6 +52,14 @@ pub fn build(b: *std.build.Builder) void {
     for (libs) |lib| {
         exe.linkSystemLibrary(lib);
     }
+    for (includes) |include| {
+        exe.addIncludeDir(include);
+    }
+
+    for (c_files) |file| {
+        exe.addCSourceFile(file, &[_][]const u8{});
+    }
+
     exe.install();
 
     const run_cmd = exe.run();

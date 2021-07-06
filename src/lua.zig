@@ -3,42 +3,42 @@ const std = @import("std");
 const c = @import("c.zig");
 const sdl = @import("sdl.zig");
 
-pub var L: *c.lua_State = undefined;
+pub var lua_state: *c.lua_State = undefined;
 
-pub fn init(file: []const u8) void {
-    L = c.luaL_newstate().?;
+pub fn init() !void {
+    lua_state = c.luaL_newstate().?;
 
-    c.luaL_openlibs(L);
+    c.luaL_openlibs(lua_state);
 
-    initLuaFunctions();
-    if (c.luaL_loadfile(L, file.ptr) != c.LUA_OK) {
-        std.log.crit("error loading lua file: {s}\n", .{c.lua_tolstring(L, -1, null)});
-        return;
-    }
+    initGlobalLuaFunctions();
+    // if (c.luaL_loadfile(L, file.ptr) != c.LUA_OK) {
+    //     std.log.crit("error loading lua file: {s}\n", .{c.lua_tolstring(L, -1, null)});
+    //     return error.Error;
+    // }
 
-    if (c.lua_pcall(L, 0, 0, 0) != c.LUA_OK) {
-        std.log.crit("error runing lua file: {s}\n", .{c.lua_tolstring(L, -1, null)});
-    }
+    // if (c.lua_pcall(L, 0, 0, 0) != c.LUA_OK) {
+    //     std.log.crit("error runing lua file: {s}\n", .{c.lua_tolstring(L, -1, null)});
+    // }
 }
 
-fn initLuaFunctions() void {
-    c.lua_pushcfunction(L, lPutMainText);
-    c.lua_setglobal(L, "putMainText");
+fn initGlobalLuaFunctions() void {
+    // c.lua_pushcfunction(lua_state, lPutMainText);
+    // c.lua_setglobal(lua_state, "putMainText");
 
-    c.lua_pushcfunction(L, lPutSubText);
-    c.lua_setglobal(L, "putSubText");
+    // c.lua_pushcfunction(lua_state, lPutSubText);
+    // c.lua_setglobal(lua_state, "putSubText");
 
-    c.lua_pushcfunction(L, lSetMainBGColor);
-    c.lua_setglobal(L, "setMainBGColor");
+    // c.lua_pushcfunction(lua_state, lSetMainBGColor);
+    // c.lua_setglobal(lua_state, "setMainBGColor");
 
-    c.lua_pushcfunction(L, lSetSubBGColor);
-    c.lua_setglobal(L, "setSubBGColor");
+    // c.lua_pushcfunction(lua_state, lSetSubBGColor);
+    // c.lua_setglobal(lua_state, "setSubBGColor");
 
-    c.lua_pushcfunction(L, lSetMainTextColor);
-    c.lua_setglobal(L, "setMainTextColor");
+    // c.lua_pushcfunction(lua_state, lSetMainTextColor);
+    // c.lua_setglobal(lua_state, "setMainTextColor");
 
-    c.lua_pushcfunction(L, lSetSubTextColor);
-    c.lua_setglobal(L, "setSubTextColor");
+    // c.lua_pushcfunction(lua_state, lSetSubTextColor);
+    // c.lua_setglobal(lua_state, "setSubTextColor");
 }
 
 pub fn handleInputEvent(key: i32) void {

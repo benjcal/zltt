@@ -1,12 +1,8 @@
 const std = @import("std");
-
 const c = @import("c.zig");
 const lua = @import("lua.zig");
 
-var T: *c.SDL_Texture = undefined;
-var R: *c.SDL_Renderer = undefined;
-var F: *c.TTF_Font = undefined;
-var W: *c.SDL_Window = undefined;
+var window: *c.SDL_Window = undefined;
 
 // Main BG Color
 var MBGR: u8 = 0;
@@ -28,18 +24,18 @@ var STCR: u8 = 255;
 var STCG: u8 = 255;
 var STCB: u8 = 255;
 
-var MainTextBuffer: []u8 = undefined;
-var SubTextBuffer: []u8 = undefined;
+var main_text_buffer: []u8 = undefined;
+var sub_text_buffer: []u8 = undefined;
 
 pub fn putMainText(text: []const u8) void {
-    std.mem.copy(u8, MainTextBuffer, text);
-    MainTextBuffer[text.len] = 0;
+    std.mem.copy(u8, main_text_buffer, text);
+    main_text_buffer[text.len] = 0;
     redraw() catch |err| return;
 }
 
 pub fn putSubText(text: []const u8) void {
-    std.mem.copy(u8, SubTextBuffer, text);
-    SubTextBuffer[text.len] = 0;
+    std.mem.copy(u8, sub_text_buffer, text);
+    sub_text_buffer[text.len] = 0;
     redraw() catch |err| return;
 }
 
@@ -73,48 +69,51 @@ pub fn setSubTextColor(r: u8, g: u8, b: u8) void {
 
 pub fn init() !void {
     // initialize memory
-    MainTextBuffer = try std.heap.c_allocator.alloc(u8, 10_000);
-    SubTextBuffer = try std.heap.c_allocator.alloc(u8, 1_000);
+    main_text_buffer = try std.heap.c_allocator.alloc(u8, 10_000);
+    sub_text_buffer = try std.heap.c_allocator.alloc(u8, 1_000);
 
-    std.mem.copy(u8, MainTextBuffer, "\x00");
-    std.mem.copy(u8, SubTextBuffer, "\x00");
+    std.mem.copy(u8, main_text_buffer, "\x00");
+    std.mem.copy(u8, sub_text_buffer, "\x00");
 
     // init SDL
     if (c.SDL_Init(c.SDL_INIT_VIDEO) < 0) {
         std.log.crit("error on initializing SDL {s}\n", .{c.SDL_GetError()});
+        return error.ErrorInitializingSDL;
     }
 
-    // init fonts
-    try initTTF();
-
     // make window
-    const initWindowHeight: u32 = 800;
-    const initWindowWidth: u32 = 600;
+    const init_window_width: u32 = 800;
+    const init_window_height: u32 = 600;
 
-    const wFlags = c.SDL_WINDOW_RESIZABLE | c.SDL_WINDOW_SHOWN;
+    const w_flags = c.SDL_WINDOW_RESIZABLE | c.SDL_WINDOW_SHOWN;
 
-    W = c.SDL_CreateWindow(
+    window = c.SDL_CreateWindow(
         "zltt",
         c.SDL_WINDOWPOS_CENTERED,
         c.SDL_WINDOWPOS_CENTERED,
-        initWindowHeight,
-        initWindowWidth,
-        wFlags,
+        init_window_width,
+        init_window_height,
+        w_flags,
     ).?;
 
-    // init renderer
-    R = c.SDL_CreateRenderer(
-        W,
-        -1,
-        c.SDL_RENDERER_ACCELERATED,
-    ).?;
+    // start text input to receive the proper keys on keypress
+    c.SDL_StartTextInput();
+}
 
-    // create main texture
+pub fn showSurface(src: *c.SDL_Surface) !void {
+    const screen = c.SDL_GetWindowSurface(window);
 
-    // initial layout drawing
-    try redraw();
+    if (c.SDL_BlitSurface(src, null, screen, null) != 0) {
+        std.log.crit("error SDL blitting surface to screen {s}\n", .{c.SDL_GetError()});
+        return error.ErrorBlittingToScreen;
+    }
 
-    _ = c.SDL_StartTextInput();
+    if (c.SDL_UpdateWindowSurface(window) != 0) {
+        std.log.crit("error SDL updating window surface {s}\n", .{c.SDL_GetError()});
+        return error.ErrorBlittingToScreen;
+    }
+
+    c.SDL_Delay(2000);
 }
 
 fn redraw() !void {
@@ -150,8 +149,8 @@ fn redraw() !void {
 
     _ = c.SDL_RenderCopy(R, t, null, null);
 
-    try renderTextMain(MainTextBuffer);
-    try renderTextSub(SubTextBuffer);
+    try renderTextMain(main_text_buffer);
+    try renderTextSub(sub_text_buffer);
     _ = c.SDL_RenderPresent(R);
 }
 
